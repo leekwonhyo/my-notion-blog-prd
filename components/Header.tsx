@@ -1,27 +1,29 @@
 import Link from 'next/link';
+import { PenLine } from 'lucide-react';
+import { ThemeToggle } from './ThemeToggle';
 
 /**
  * 블로그 공통 헤더 컴포넌트
  */
 export default function Header() {
   return (
-    <header className="border-b border-gray-200 dark:border-gray-800">
-      <div className="max-w-4xl mx-auto px-4 py-6">
-        <nav className="flex items-center justify-between">
+    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
+        <Link
+          href="/"
+          className="flex items-center gap-2 text-xl font-bold hover:text-primary transition-colors"
+        >
+          <PenLine className="h-5 w-5" />
+          <span>My Blog</span>
+        </Link>
+        <nav className="flex items-center gap-4">
           <Link
             href="/"
-            className="text-xl font-bold text-gray-900 dark:text-white hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+            className="text-muted-foreground hover:text-foreground transition-colors"
           >
-            My Blog
+            Posts
           </Link>
-          <div className="flex gap-6">
-            <Link
-              href="/"
-              className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
-            >
-              Posts
-            </Link>
-          </div>
+          <ThemeToggle />
         </nav>
       </div>
     </header>

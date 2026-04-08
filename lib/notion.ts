@@ -124,6 +124,10 @@ export async function getPosts(): Promise<Post[]> {
  * 슬러그로 단일 글 조회
  */
 export async function getPostBySlug(slug: string): Promise<Post | null> {
+  if (!isConfigured()) {
+    return null;
+  }
+
   const response = await notion.databases.query({
     database_id: databaseId,
     filter: {
@@ -186,4 +190,76 @@ export async function getPageContent(
 export async function getAllPostSlugs(): Promise<string[]> {
   const posts = await getPosts();
   return posts.map((post) => post.slug);
+}
+
+/**
+ * 모든 태그 목록 조회 (중복 제거)
+ */
+export async function getAllTags(): Promise<{ id: string; name: string; color: string }[]> {
+  const posts = await getPosts();
+  const tagMap = new Map<string, { id: string; name: string; color: string }>();
+
+  posts.forEach((post) => {
+    post.tags.forEach((tag) => {
+      if (!tagMap.has(tag.name)) {
+        tagMap.set(tag.name, tag);
+      }
+    });
+  });
+
+  return Array.from(tagMap.values());
+}
+
+/**
+ * 이전/다음 글 조회
+ */
+export async function getAdjacentPosts(
+  currentSlug: string
+): Promise<{ prev: Post | null; next: Post | null }> {
+  const posts = await getPosts();
+  const currentIndex = posts.findIndex((post) => post.slug === currentSlug);
+
+  if (currentIndex === -1) {
+    return { prev: null, next: null };
+  }
+
+  return {
+    prev: currentIndex < posts.length - 1 ? posts[currentIndex + 1] : null,
+    next: currentIndex > 0 ? posts[currentIndex - 1] : null,
+  };
+}
+
+/**
+ * 블록에서 헤딩 정보 추출 (TOC용)
+ */
+export function extractHeadings(
+  blocks: BlockObjectResponse[]
+): { id: string; text: string; level: number }[] {
+  return blocks
+    .filter((block) =>
+      ['heading_1', 'heading_2', 'heading_3'].includes(block.type)
+    )
+    .map((block) => {
+      let text = '';
+      let level = 1;
+
+      if (block.type === 'heading_1') {
+        text = block.heading_1.rich_text.map((t) => t.plain_text).join('');
+        level = 1;
+      } else if (block.type === 'heading_2') {
+        text = block.heading_2.rich_text.map((t) => t.plain_text).join('');
+        level = 2;
+      } else if (block.type === 'heading_3') {
+        text = block.heading_3.rich_text.map((t) => t.plain_text).join('');
+        level = 3;
+      }
+
+      // ID 생성 (한글 지원)
+      const id = text
+        .toLowerCase()
+        .replace(/[^\w\s가-힣]/g, '')
+        .replace(/\s+/g, '-');
+
+      return { id, text, level };
+    });
 }

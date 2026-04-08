@@ -1,4 +1,7 @@
 import Link from 'next/link';
+import { Calendar, ArrowRight } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Post } from '@/lib/notion';
 
 interface PostCardProps {
@@ -16,42 +19,41 @@ export default function PostCard({ post }: PostCardProps) {
   });
 
   return (
-    <article className="group">
-      <Link href={`/posts/${post.slug}`} className="block">
-        <div className="p-6 rounded-lg border border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 transition-colors">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-            {post.title}
-          </h2>
-
+    <Link href={`/posts/${post.slug}`} className="block group">
+      <Card className="transition-all hover:shadow-md hover:border-primary/50">
+        <CardHeader>
+          <CardTitle className="flex items-start justify-between gap-4">
+            <span className="group-hover:text-primary transition-colors">
+              {post.title}
+            </span>
+            <ArrowRight className="h-5 w-5 flex-shrink-0 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
           {post.description && (
-            <p className="mt-2 text-gray-600 dark:text-gray-400 line-clamp-2">
+            <p className="text-muted-foreground line-clamp-2 mb-4">
               {post.description}
             </p>
           )}
 
-          <div className="mt-4 flex items-center gap-4 flex-wrap">
-            <time
-              dateTime={post.date}
-              className="text-sm text-gray-500 dark:text-gray-500"
-            >
-              {formattedDate}
-            </time>
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+              <Calendar className="h-4 w-4" />
+              <time dateTime={post.date}>{formattedDate}</time>
+            </div>
 
             {post.tags.length > 0 && (
               <div className="flex gap-2 flex-wrap">
                 {post.tags.map((tag) => (
-                  <span
-                    key={tag.id}
-                    className="px-2 py-1 text-xs rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
-                  >
+                  <Badge key={tag.id} variant="secondary">
                     {tag.name}
-                  </span>
+                  </Badge>
                 ))}
               </div>
             )}
           </div>
-        </div>
-      </Link>
-    </article>
+        </CardContent>
+      </Card>
+    </Link>
   );
 }

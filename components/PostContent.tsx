@@ -1,7 +1,18 @@
+import Image from 'next/image';
 import { BlockObjectResponse, RichTextItemResponse } from '@notionhq/client/build/src/api-endpoints';
 
 interface PostContentProps {
   blocks: BlockObjectResponse[];
+}
+
+/**
+ * 텍스트를 slug로 변환 (ID 생성용)
+ */
+function textToSlug(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^\w\s가-힣]/g, '')
+    .replace(/\s+/g, '-');
 }
 
 /**
@@ -29,7 +40,7 @@ function renderRichText(richText: RichTextItemResponse[]) {
       element = (
         <code
           key={`code-${index}`}
-          className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-sm font-mono"
+          className="px-1.5 py-0.5 rounded bg-muted text-sm font-mono"
         >
           {element}
         </code>
@@ -40,7 +51,7 @@ function renderRichText(richText: RichTextItemResponse[]) {
         <a
           key={`link-${index}`}
           href={href}
-          className="text-blue-600 dark:text-blue-400 hover:underline"
+          className="text-primary hover:underline"
           target="_blank"
           rel="noopener noreferrer"
         >
@@ -67,26 +78,35 @@ function renderBlock(block: BlockObjectResponse) {
         </p>
       );
 
-    case 'heading_1':
+    case 'heading_1': {
+      const text = block.heading_1.rich_text.map((t) => t.plain_text).join('');
+      const headingId = textToSlug(text);
       return (
-        <h1 key={id} className="text-3xl font-bold mt-8 mb-4">
+        <h1 key={id} id={headingId} className="text-3xl font-bold mt-8 mb-4 scroll-mt-20">
           {renderRichText(block.heading_1.rich_text)}
         </h1>
       );
+    }
 
-    case 'heading_2':
+    case 'heading_2': {
+      const text = block.heading_2.rich_text.map((t) => t.plain_text).join('');
+      const headingId = textToSlug(text);
       return (
-        <h2 key={id} className="text-2xl font-bold mt-6 mb-3">
+        <h2 key={id} id={headingId} className="text-2xl font-bold mt-6 mb-3 scroll-mt-20">
           {renderRichText(block.heading_2.rich_text)}
         </h2>
       );
+    }
 
-    case 'heading_3':
+    case 'heading_3': {
+      const text = block.heading_3.rich_text.map((t) => t.plain_text).join('');
+      const headingId = textToSlug(text);
       return (
-        <h3 key={id} className="text-xl font-bold mt-4 mb-2">
+        <h3 key={id} id={headingId} className="text-xl font-bold mt-4 mb-2 scroll-mt-20">
           {renderRichText(block.heading_3.rich_text)}
         </h3>
       );
+    }
 
     case 'bulleted_list_item':
       return (
@@ -109,9 +129,9 @@ function renderBlock(block: BlockObjectResponse) {
             type="checkbox"
             checked={block.to_do.checked}
             readOnly
-            className="mt-1"
+            className="mt-1 rounded"
           />
-          <span className={block.to_do.checked ? 'line-through text-gray-500' : ''}>
+          <span className={block.to_do.checked ? 'line-through text-muted-foreground' : ''}>
             {renderRichText(block.to_do.rich_text)}
           </span>
         </div>
@@ -130,9 +150,9 @@ function renderBlock(block: BlockObjectResponse) {
       return (
         <pre
           key={id}
-          className="mb-4 p-4 rounded-lg bg-gray-900 dark:bg-gray-950 overflow-x-auto"
+          className="mb-4 p-4 rounded-lg bg-muted overflow-x-auto"
         >
-          <code className="text-sm text-gray-100 font-mono">
+          <code className="text-sm font-mono">
             {block.code.rich_text.map((t) => t.plain_text).join('')}
           </code>
         </pre>
@@ -142,20 +162,20 @@ function renderBlock(block: BlockObjectResponse) {
       return (
         <blockquote
           key={id}
-          className="mb-4 pl-4 border-l-4 border-gray-300 dark:border-gray-700 italic text-gray-600 dark:text-gray-400"
+          className="mb-4 pl-4 border-l-4 border-primary/50 italic text-muted-foreground"
         >
           {renderRichText(block.quote.rich_text)}
         </blockquote>
       );
 
     case 'divider':
-      return <hr key={id} className="my-8 border-gray-200 dark:border-gray-800" />;
+      return <hr key={id} className="my-8 border-border" />;
 
     case 'callout':
       return (
         <div
           key={id}
-          className="mb-4 p-4 rounded-lg bg-gray-100 dark:bg-gray-800 flex gap-3"
+          className="mb-4 p-4 rounded-lg bg-muted flex gap-3"
         >
           {block.callout.icon?.type === 'emoji' && (
             <span className="text-xl">{block.callout.icon.emoji}</span>
@@ -164,7 +184,7 @@ function renderBlock(block: BlockObjectResponse) {
         </div>
       );
 
-    case 'image':
+    case 'image': {
       const imageUrl =
         block.image.type === 'external'
           ? block.image.external.url
@@ -173,21 +193,36 @@ function renderBlock(block: BlockObjectResponse) {
         block.image.caption.length > 0
           ? block.image.caption.map((c) => c.plain_text).join('')
           : '';
+
+      // Notion 내부 이미지는 next/image 사용 불가 (서명된 URL)
+      const isExternalImage = block.image.type === 'external';
+
       return (
         <figure key={id} className="mb-4">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={imageUrl}
-            alt={caption || 'Blog image'}
-            className="rounded-lg max-w-full h-auto"
-          />
+          {isExternalImage ? (
+            <Image
+              src={imageUrl}
+              alt={caption || 'Blog image'}
+              width={800}
+              height={400}
+              className="rounded-lg w-full h-auto"
+            />
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={imageUrl}
+              alt={caption || 'Blog image'}
+              className="rounded-lg max-w-full h-auto"
+            />
+          )}
           {caption && (
-            <figcaption className="mt-2 text-center text-sm text-gray-500">
+            <figcaption className="mt-2 text-center text-sm text-muted-foreground">
               {caption}
             </figcaption>
           )}
         </figure>
       );
+    }
 
     case 'bookmark':
       return (
@@ -196,9 +231,9 @@ function renderBlock(block: BlockObjectResponse) {
           href={block.bookmark.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="block mb-4 p-4 rounded-lg border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
+          className="block mb-4 p-4 rounded-lg border hover:bg-muted transition-colors"
         >
-          <span className="text-blue-600 dark:text-blue-400 hover:underline">
+          <span className="text-primary hover:underline break-all">
             {block.bookmark.url}
           </span>
         </a>
@@ -214,7 +249,7 @@ function renderBlock(block: BlockObjectResponse) {
  */
 export default function PostContent({ blocks }: PostContentProps) {
   return (
-    <div className="prose prose-gray dark:prose-invert max-w-none">
+    <div className="prose prose-neutral dark:prose-invert max-w-none">
       {blocks.map((block) => renderBlock(block))}
     </div>
   );

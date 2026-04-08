@@ -1,8 +1,19 @@
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { getPostBySlug, getPageContent, getAllPostSlugs } from '@/lib/notion';
+import { ArrowLeft, Calendar } from 'lucide-react';
+import {
+  getPostBySlug,
+  getPageContent,
+  getAllPostSlugs,
+  getAdjacentPosts,
+  extractHeadings,
+} from '@/lib/notion';
+import { Badge } from '@/components/ui/badge';
 import PostContent from '@/components/PostContent';
+import { PostNavigation } from '@/components/PostNavigation';
+import { ShareButtons } from '@/components/ShareButtons';
+import { TableOfContents } from '@/components/TableOfContents';
 
 interface PostPageProps {
   params: Promise<{
@@ -13,7 +24,7 @@ interface PostPageProps {
 export const revalidate = 60; // ISR: 60초마다 재검증
 
 /**
- * 정적 경로 생성 (빌드 시 모든 글 페이지 생성)
+ * 정적 경로 생성 (빌드 시 모든 글 페��지 생성)
  */
 export async function generateStaticParams() {
   const slugs = await getAllPostSlugs();
@@ -35,9 +46,23 @@ export async function generateMetadata({
     };
   }
 
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+
   return {
     title: post.title,
     description: post.description || `Read ${post.title} on My Blog`,
+    openGraph: {
+      title: post.title,
+      description: post.description || `Read ${post.title} on My Blog`,
+      type: 'article',
+      publishedTime: post.date,
+      url: `${siteUrl}/posts/${post.slug}`,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: post.title,
+      description: post.description || `Read ${post.title} on My Blog`,
+    },
   };
 }
 
@@ -52,7 +77,14 @@ export default async function PostPage({ params }: PostPageProps) {
     notFound();
   }
 
-  const blocks = await getPageContent(post.id);
+  const [blocks, adjacentPosts] = await Promise.all([
+    getPageContent(post.id),
+    getAdjacentPosts(slug),
+  ]);
+
+  const headings = extractHeadings(blocks);
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+  const postUrl = `${siteUrl}/posts/${post.slug}`;
 
   const formattedDate = new Date(post.date).toLocaleDateString('ko-KR', {
     year: 'numeric',
@@ -61,46 +93,54 @@ export default async function PostPage({ params }: PostPageProps) {
   });
 
   return (
-    <article>
+    <article className="relative">
+      {/* 목차 (데스크톱) */}
+      <TableOfContents items={headings} />
+
       <div className="mb-8">
         <Link
           href="/"
-          className="text-blue-600 dark:text-blue-400 hover:underline text-sm"
+          className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors text-sm"
         >
-          &larr; Back to posts
+          <ArrowLeft className="h-4 w-4" />
+          Back to posts
         </Link>
       </div>
 
       <header className="mb-8">
-        <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-          {post.title}
-        </h1>
+        <h1 className="text-4xl font-bold mb-4">{post.title}</h1>
 
-        <div className="flex items-center gap-4 flex-wrap text-sm text-gray-500 dark:text-gray-400">
-          <time dateTime={post.date}>{formattedDate}</time>
+        <div className="flex items-center gap-4 flex-wrap text-sm text-muted-foreground mb-4">
+          <div className="flex items-center gap-1">
+            <Calendar className="h-4 w-4" />
+            <time dateTime={post.date}>{formattedDate}</time>
+          </div>
 
           {post.tags.length > 0 && (
             <div className="flex gap-2">
               {post.tags.map((tag) => (
-                <span
-                  key={tag.id}
-                  className="px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-800"
-                >
+                <Badge key={tag.id} variant="secondary">
                   {tag.name}
-                </span>
+                </Badge>
               ))}
             </div>
           )}
         </div>
 
         {post.description && (
-          <p className="mt-4 text-lg text-gray-600 dark:text-gray-400">
-            {post.description}
-          </p>
+          <p className="text-lg text-muted-foreground">{post.description}</p>
         )}
       </header>
 
       <PostContent blocks={blocks} />
+
+      {/* 공유 버튼 */}
+      <div className="mt-8 pt-8 border-t">
+        <ShareButtons title={post.title} url={postUrl} />
+      </div>
+
+      {/* 이전/다음 글 네비게이션 */}
+      <PostNavigation prevPost={adjacentPosts.prev} nextPost={adjacentPosts.next} />
     </article>
   );
 }
