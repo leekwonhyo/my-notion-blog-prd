@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import localFont from 'next/font/local';
 import Header from '@/components/Header';
+import ScrollToTop from '@/components/ScrollToTop';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { cn } from '@/lib/utils';
 import './globals.css';
@@ -62,6 +63,7 @@ export default function RootLayout({
               Built with Notion and Next.js
             </div>
           </footer>
+          <ScrollToTop />
         </ThemeProvider>
       </body>
     </html>
